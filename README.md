@@ -1,4 +1,4 @@
-# Front-end user plugin
+# Front-end user plugin modified
 
 Front-end user management for October CMS. View this plugin on the October CMS marketplace:
 
