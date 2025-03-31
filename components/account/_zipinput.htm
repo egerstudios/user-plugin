@@ -1,0 +1,33 @@
+<div class="form-group">
+    <label for="zip">Postnummer</label>
+    <select 
+        id="zip"
+        name="zip" 
+        class="form-control select2"
+        data-request="onUpdateZip"
+        data-request-success="$('#city-result').html($(this).val())"
+        data-request-data="redirect:0">
+        <option value="">Velg postnummer</option>
+        {% for code, name in __SELF__.getPostalCodeList() %}
+            <option value="{{ code }}" {{ user.zip == code ? 'selected' : '' }}>{{ code }} - {{ name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#zip').select2({
+        placeholder: 'Søk etter postnummer eller by',
+        allowClear: true,
+        width: '100%',
+        language: {
+            noResults: function() {
+                return "Ingen resultater funnet";
+            },
+            searching: function() {
+                return "Søker...";
+            }
+        }
+    });
+});
+</script> 
