@@ -144,7 +144,7 @@ class Account extends ComponentBase
             return $event;
         }
 
-        if ($flash = Cms::flashFromPost(__("Your profile has been updated."))) {
+        if ($flash = Cms::flashFromPost(__("Profilen din er oppdatert"))) {
             Flash::success($flash);
         }
 
@@ -160,7 +160,7 @@ class Account extends ComponentBase
     {
         $this->actionVerifyEmail();
 
-        if ($flash = Cms::flashFromPost(__("Please check your email for instructions."))) {
+        if ($flash = Cms::flashFromPost(__("Sjekk e-posten din for ytterligere instruksjoner."))) {
             Flash::success($flash);
         }
 
@@ -249,7 +249,7 @@ class Account extends ComponentBase
     {
         $this->actionDeleteOtherSessions();
 
-        if ($flash = Cms::flashFromPost(__("Your other browser sessions have been logged out."))) {
+        if ($flash = Cms::flashFromPost(__("Alle andre nettleser-sesjoner er logget ut."))) {
             Flash::success($flash);
         }
 
@@ -265,7 +265,7 @@ class Account extends ComponentBase
     {
         $this->actionDeleteUser();
 
-        if ($flash = Cms::flashFromPost(__("Your account has been removed from our system."))) {
+        if ($flash = Cms::flashFromPost(__("Kontoen din er fjernet fra vårt system."))) {
             Flash::success($flash);
         }
 

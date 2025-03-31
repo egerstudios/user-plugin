@@ -31,11 +31,11 @@ trait ActionRecoverPassword
         ]);
 
         if ($status === PasswordBroker::RESET_THROTTLED) {
-            throw new ValidationException([UserHelper::username() => __("Please wait before retrying.")]);
+            throw new ValidationException([UserHelper::username() => __("Vent litt før du prøver igjen")]);
         }
 
         if ($status !== PasswordBroker::RESET_LINK_SENT) {
-            throw new ValidationException([UserHelper::username() => __("We can't find a user with that email address.")]);
+            throw new ValidationException([UserHelper::username() => __("Vi finner ingen brukere med den e-post adressen")]);
         }
     }
 

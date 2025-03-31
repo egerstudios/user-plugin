@@ -116,7 +116,7 @@ class Authentication extends ComponentBase
             return $response;
         }
 
-        if ($flash = Cms::flashFromPost(__("Please check your email. We have sent instructions to reset your password."))) {
+        if ($flash = Cms::flashFromPost(__("Vennlist sjekk e-posten din. Vi har sendt deg informasjon om hvordan du tilbakestiller passordet ditt."))) {
             Flash::success($flash);
         }
 

@@ -56,7 +56,7 @@ class ResetPassword extends ComponentBase
             return $response;
         }
 
-        if ($flash = Cms::flashFromPost(__("Your password has been created and you may now sign in to your account"))) {
+        if ($flash = Cms::flashFromPost(__("Passordet ditt er opprettet og du kan nå logge inn på din konto."))) {
             Flash::success($flash);
         }
 
@@ -74,7 +74,7 @@ class ResetPassword extends ComponentBase
             return $response;
         }
 
-        if ($flash = Cms::flashFromPost(__("Your password has been reset"))) {
+        if ($flash = Cms::flashFromPost(__("Passordet ditt er tilbakestilt"))) {
             Flash::success($flash);
         }
 
@@ -92,7 +92,7 @@ class ResetPassword extends ComponentBase
             return $response;
         }
 
-        if ($flash = Cms::flashFromPost(__("Your password has been changed"))) {
+        if ($flash = Cms::flashFromPost(__("Passordet ditt er endret"))) {
             Flash::success($flash);
         }
 

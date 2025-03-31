@@ -155,7 +155,7 @@ class Session extends ComponentBase
             }
         }
 
-        if ($flash = Cms::flashFromPost(__("You have been successfully logged out!"))) {
+        if ($flash = Cms::flashFromPost(__("Du er logget ut"))) {
             Flash::success($flash);
         }
 
@@ -270,7 +270,7 @@ class Session extends ComponentBase
 
         $url = post('redirect', Request::fullUrl());
 
-        if ($flash = Cms::flashFromPost(__("You are no longer impersonating a user."))) {
+        if ($flash = Cms::flashFromPost(__("Du opptrer ikke lenger som en annen bruker"))) {
             Flash::success($flash);
         }
 

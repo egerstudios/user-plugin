@@ -2,6 +2,7 @@
 
 use Auth;
 use Event;
+use Lang;
 use Validator;
 use RainLab\User\Helpers\User as UserHelper;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -79,7 +80,7 @@ trait ActionLogin
 
         $seconds = $limiter->availableIn();
 
-        $message = __("Too many login attempts. Please try again in :seconds seconds.", [
+        $message = __("For mange innloggingsforsøk, prøv igjen om :seconds sekunder.", [
             'seconds' => $seconds,
             'minutes' => ceil($seconds / 60),
         ]);
@@ -97,7 +98,7 @@ trait ActionLogin
         Validator::make($input, [
             UserHelper::username() => 'required|string',
             'password' => 'required|string',
-        ])->validate();
+        ], Lang::get('rainlab.user::validation'))->validate();
 
         return Auth::attempt($credentials, $this->useRememberMe());
     }
@@ -109,7 +110,7 @@ trait ActionLogin
     {
         $this->makeLoginRateLimiter()->increment();
 
-        throw new ValidationException([UserHelper::username() => __("These credentials do not match our records.")]);
+        throw new ValidationException([UserHelper::username() => __("Feil brukernavn eller passord")]);
     }
 
     /**

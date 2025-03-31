@@ -4,6 +4,7 @@ use Cms;
 use Auth;
 use Event;
 use Validator;
+use Lang;
 use RainLab\User\Models\User;
 use RainLab\User\Models\Setting;
 use RainLab\User\Models\UserLog;
@@ -102,12 +103,22 @@ class Registration extends ComponentBase
             $input['password_confirmation'] = $input['password'] ?? '';
         }
 
+        $messages = [
+            'required' => 'Feltet :attribute må fylles ut',
+            'string' => 'Feltet :attribute har ugyldige tegn',
+            'max' => 'Feltet :attribute kan ikke inneholde mer enn :max tegn',
+            'unique' => 'Det ser ut som :attribute finnes fra før',
+            'email' => 'Feltet for e-post inneholder ikke en gyldig e-post adresse'
+        ];
+
+
         Validator::make($input, [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => UserHelper::passwordRules(),
-        ])->validate();
+            'mobile' => ['required', 'string', 'max:11']
+        ], Lang::get('rainlab.user::validation'))->validate();
 
         $user = User::create([
             'first_name' => $input['first_name'],
@@ -115,6 +126,7 @@ class Registration extends ComponentBase
             'email' => $input['email'],
             'password' => $input['password'],
             'password_confirmation' => $input['password_confirmation'],
+            'mobile' => $input['mobile'],
         ]);
 
         UserLog::createRecord($user->getKey(), UserLog::TYPE_NEW_USER, [
