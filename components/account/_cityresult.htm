@@ -1,0 +1,13 @@
+{% if city %}
+    <span class="">{{ city }}</span>
+{% elseif user.city %} 
+    <span class="">{{ user.city }}</span>
+{% else %} 
+    <span class="text-muted">Legg inn postnummer for å se poststed</span>
+{% endif %}
+
+{% if flash %}
+    <div class="alert alert-success mt-2">
+        {{ flash }}
+    </div>
+{% endif %} 

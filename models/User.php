@@ -98,6 +98,11 @@ class User extends Model implements Authenticatable, CanResetPassword
         'password',
         'password_confirmation',
         'is_guest',
+        'country_id',
+        'street_addr',
+        'zip',
+        'city',
+        'mobile'
     ];
 
     /**
@@ -161,7 +166,8 @@ class User extends Model implements Authenticatable, CanResetPassword
      * @var array belongsTo
      */
     public $belongsTo = [
-        'primary_group' => UserGroup::class
+        'primary_group' => UserGroup::class,
+        'country' => \EgerStudios\Location\Models\Country::class
     ];
 
     /**

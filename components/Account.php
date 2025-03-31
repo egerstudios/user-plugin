@@ -62,6 +62,18 @@ class Account extends ComponentBase
         if ($redirect = $this->checkVerifyEmailRedirect()) {
             return $redirect;
         }
+
+        // Validate zip/city correspondence
+        $user = $this->user();
+        if ($user && $user->zip && $user->city) {
+            $postalCodeModel = \EgerStudios\Location\Models\PostalCode::where('code', $user->zip)->first();
+            
+            if (!$postalCodeModel || $postalCodeModel->name !== $user->city) {
+                // If mismatch, update city based on zip
+                $user->city = $postalCodeModel ? $postalCodeModel->name : null;
+                $user->save();
+            }
+        }
     }
 
     /**
@@ -118,6 +130,11 @@ class Account extends ComponentBase
                 'old_value' => $user->email,
                 'new_value' => $input['email']
             ]);
+        }
+
+        // Handle country selection
+        if (isset($input['country_id'])) {
+            $input['country_id'] = (int) $input['country_id'];
         }
 
         $user->fill($input);
@@ -304,5 +321,104 @@ class Account extends ComponentBase
     public function twoFactorRecoveryCodes(): array
     {
         return $this->fetchTwoFactorRecoveryCodes();
+    }
+
+    /**
+     * getCountryList returns a list of countries for the dropdown
+     */
+    public function getCountryList()
+    {
+        return \EgerStudios\Location\Models\Country::getNameList();
+    }
+
+    /**
+     * onLookupPostalCode looks up the city based on the postal code
+     */
+    public function onLookupPostalCode()
+    {
+        $postalCode = post('zip');
+        
+        if (!$postalCode) {
+            return [
+                'city' => ''
+            ];
+        }
+
+        $postalCodeModel = \EgerStudios\Location\Models\PostalCode::where('code', $postalCode)->first();
+        
+        return [
+            'city' => $postalCodeModel ? $postalCodeModel->name : ''
+        ];
+    }
+
+    /**
+     * onUpdateCountry automatically saves country selection
+     */
+    public function onUpdateCountry()
+    {
+        $user = $this->user();
+        if (!$user) {
+            throw new ForbiddenException;
+        }
+
+        $countryId = (int) post('country_id');
+        if (!$countryId) {
+            throw new ValidationException(['country_id' => 'Please select a valid country']);
+        }
+
+        $user->country_id = $countryId;
+        $user->save();
+
+        Flash::success(__("Land er oppdatert"));
+    }
+
+    /**
+     * onUpdateZip handles zip code updates and city lookup
+     */
+    public function onUpdateZip()
+    {
+        $user = $this->user();
+        if (!$user) {
+            throw new ForbiddenException;
+        }
+
+        $zip = post('zip');
+        
+        if (!$zip) {
+            $user->zip = null;
+            $user->city = null;
+            $user->save();
+
+            Flash::warning(__("Adresse er fjernet"));
+            return [
+                'city' => ''
+            ];
+        }
+
+        $postalCodeModel = \EgerStudios\Location\Models\PostalCode::where('code', $zip)->first();
+        
+        if (!$postalCodeModel) {
+            throw new ValidationException(['zip' => 'Ugyldig postnummer']);
+        }
+
+        $user->zip = $zip;
+        $user->city = $postalCodeModel->name;
+        $user->save();
+
+        Flash::success(__("Adresse er oppdatert"));
+        return [
+            '#cityResult' => $this->renderPartial('@_cityresult', ['city' => $user->city])
+        ];
+    }
+
+    /**
+     * getPostalCodeList returns a list of postal codes for the select2 dropdown
+     */
+    public function getPostalCodeList()
+    {
+        return \EgerStudios\Location\Models\PostalCode::orderBy('code')
+            ->get()
+            ->pluck('name', 'code')
+            ->toArray();
     }
 }
