@@ -167,7 +167,7 @@ class User extends Model implements Authenticatable, CanResetPassword
      */
     public $belongsTo = [
         'primary_group' => UserGroup::class,
-        'country' => \EgerStudios\Location\Models\Country::class
+        'country' => \Rainlab\Location\Models\Country::class
     ];
 
     /**
