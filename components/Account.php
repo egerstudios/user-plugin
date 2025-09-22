@@ -66,7 +66,7 @@ class Account extends ComponentBase
         // Validate zip/city correspondence
         $user = $this->user();
         if ($user && $user->zip && $user->city) {
-            $postalCodeModel = \EgerStudios\Location\Models\PostalCode::where('code', $user->zip)->first();
+            $postalCodeModel = \Rainlab\Location\Models\PostalCode::where('code', $user->zip)->first();
             
             if (!$postalCodeModel || $postalCodeModel->name !== $user->city) {
                 // If mismatch, update city based on zip
@@ -328,7 +328,7 @@ class Account extends ComponentBase
      */
     public function getCountryList()
     {
-        return \EgerStudios\Location\Models\Country::getNameList();
+        return \Rainlab\Location\Models\Country::getNameList();
     }
 
     /**
@@ -344,7 +344,7 @@ class Account extends ComponentBase
             ];
         }
 
-        $postalCodeModel = \EgerStudios\Location\Models\PostalCode::where('code', $postalCode)->first();
+        $postalCodeModel = \Rainlab\Location\Models\PostalCode::where('code', $postalCode)->first();
         
         return [
             'city' => $postalCodeModel ? $postalCodeModel->name : ''
@@ -395,7 +395,7 @@ class Account extends ComponentBase
             ];
         }
 
-        $postalCodeModel = \EgerStudios\Location\Models\PostalCode::where('code', $zip)->first();
+        $postalCodeModel = \Rainlab\Location\Models\PostalCode::where('code', $zip)->first();
         
         if (!$postalCodeModel) {
             throw new ValidationException(['zip' => 'Ugyldig postnummer']);
@@ -416,7 +416,7 @@ class Account extends ComponentBase
      */
     public function getPostalCodeList()
     {
-        return \EgerStudios\Location\Models\PostalCode::orderBy('code')
+        return \Rainlab\Location\Models\PostalCode::orderBy('code')
             ->get()
             ->pluck('name', 'code')
             ->toArray();
