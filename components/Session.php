@@ -298,6 +298,12 @@ class Session extends ComponentBase
             return;
         }
 
+        // Skip password hash check during impersonation since the
+        // impersonated user will differ from the stored hash
+        if (Auth::isImpersonator()) {
+            return;
+        }
+
         $logoutFunc = function() {
             Auth::logoutCurrentDevice();
             Request::session()->flush();
@@ -308,7 +314,11 @@ class Session extends ComponentBase
 
         if (Auth::viaRemember()) {
             $passwordHash = explode('|', Cookie::get(Auth::getRecallerName()))[2] ?? null;
-            if (!$passwordHash || $passwordHash != $user->getAuthPassword()) {
+            $expectedHash = method_exists(Auth::guard(), 'hashPasswordForCookie')
+                ? Auth::hashPasswordForCookie($user->getAuthPassword())
+                : $user->getAuthPassword();
+
+            if (!$passwordHash || $passwordHash !== $expectedHash) {
                 $logoutFunc();
                 return;
             }
