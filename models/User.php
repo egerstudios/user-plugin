@@ -29,6 +29,7 @@ use October\Rain\Auth\AuthException;
  * @property string $remember_token
  * @property string $two_factor_secret
  * @property string $two_factor_recovery_codes
+ * @property bool $is_approved
  * @property int $primary_group_id
  * @property string $created_ip_address
  * @property string $last_ip_address
@@ -68,8 +69,8 @@ class User extends Model implements Authenticatable, CanResetPassword
      */
     public $rules = [
         'first_name' => ['required', 'string', 'max:255'],
-        'email' => ['required', 'between:3,255', 'email', 'unique:users,email,NULL,id,is_guest,false'],
-        'username' => ['required', 'between:2,255', 'unique:users,username,NULL,id,is_guest,false'],
+        'email' => ['required', 'between:3,255', 'email', 'unique:users,email,NULL,id,is_guest,!1'],
+        'username' => ['required', 'between:2,255', 'unique:users,username,NULL,id,is_guest,!1'],
         'password' => ['required:create', 'string', 'confirmed'],
         'avatar' => ['nullable', 'image', 'max:4000'],
     ];
@@ -86,6 +87,16 @@ class User extends Model implements Authenticatable, CanResetPassword
         'activated_at',
         'two_factor_confirmed_at',
     ];
+
+    /**
+     * casts for the model attributes
+     */
+    protected function casts()
+    {
+        return [
+            'is_approved' => 'boolean',
+        ];
+    }
 
     /**
      * @var array fillable attributes
@@ -237,6 +248,50 @@ class User extends Model implements Authenticatable, CanResetPassword
 
 
     //
+    // Merging
+    //
+
+    /**
+     * mergeUser absorbs another user's owned records into this user,
+     * then deletes the merged user. This user is the "leading" user
+     * and keeps all its own attributes.
+     */
+    public function mergeUser(User $mergedUser)
+    {
+        if ($this->getKey() === $mergedUser->getKey()) {
+            throw new \ApplicationException("Cannot merge a user with itself.");
+        }
+
+        /**
+         * @event rainlab.user.mergeUser
+         * Called when a user is being merged into another. Plugins should
+         * reassign any records owned by $mergedUser to $this (the leading user).
+         *
+         * Example usage:
+         *
+         *     Event::listen('rainlab.user.mergeUser', function($leadingUser, $mergedUser) {
+         *         Order::where('user_id', $mergedUser->id)
+         *             ->update(['user_id' => $leadingUser->id]);
+         *     });
+         */
+        Event::fire('rainlab.user.mergeUser', [$this, $mergedUser]);
+
+        // Reassign core relations
+        UserLog::where('user_id', $mergedUser->getKey())
+            ->update(['user_id' => $this->getKey()]);
+
+        // Log the merge
+        UserLog::createSystemRecord($this->getKey(), UserLog::TYPE_ADMIN_MERGE, [
+            'user_full_name' => $this->full_name,
+            'merged_user_email' => $mergedUser->email,
+            'merged_user_id' => $mergedUser->getKey(),
+        ]);
+
+        // Delete the merged user (force delete, no soft delete)
+        $mergedUser->forceDelete();
+    }
+
+    //
     // Events
     //
 
@@ -310,7 +365,7 @@ class User extends Model implements Authenticatable, CanResetPassword
         if ($this->is_guest) {
             $this->primary_group = UserGroup::getGuestGroup();
         }
-        elseif (!$this->primary_group_id) {
+        elseif (!$this->primary_group_id && !array_key_exists('primary_group_id', $this->attributes)) {
             $this->primary_group = UserGroup::getRegisteredGroup();
         }
     }
@@ -324,6 +379,17 @@ class User extends Model implements Authenticatable, CanResetPassword
 
         if ($this->send_invite) {
             $this->sendConfirmRegistrationNotification();
+        }
+    }
+
+    /**
+     * afterSave event mirrors the primary group into the secondary groups pivot
+     */
+    public function afterSave()
+    {
+        if ($this->primary_group_id) {
+            $this->groups()->syncWithoutDetaching([$this->primary_group_id]);
+            $this->unsetRelation('groups');
         }
     }
 
@@ -366,6 +432,44 @@ class User extends Model implements Authenticatable, CanResetPassword
     }
 
     //
+    // Approval
+    //
+
+    /**
+     * approve marks the user as approved by an administrator.
+     */
+    public function approve()
+    {
+        if ($this->is_approved !== true) {
+            $this->is_approved = true;
+            $this->save(['force' => true]);
+        }
+    }
+
+    /**
+     * unapprove removes administrator approval from the user.
+     */
+    public function unapprove()
+    {
+        if ($this->is_approved !== false) {
+            $this->is_approved = false;
+            $this->save(['force' => true]);
+        }
+    }
+
+    /**
+     * isPendingApproval returns true when the user is explicitly unapproved and
+     * awaiting an administrator, since an unhydrated model may not include the
+     * approved-by-default attribute value.
+     */
+    public function isPendingApproval(): bool
+    {
+        $isApproved = $this->is_approved;
+
+        return $isApproved !== null && (bool) $isApproved === false;
+    }
+
+    //
     // Last Seen
     //
 
@@ -402,6 +506,19 @@ class User extends Model implements Authenticatable, CanResetPassword
 
         $this->last_seen = $this->freshTimestamp();
         $this->timestamps = $oldTimestamps;
+
+        /**
+         * @event rainlab.user.seen
+         * Fired when a user's last_seen timestamp transitions to online after inactivity.
+         *
+         * Example usage:
+         *
+         *     Event::listen('rainlab.user.seen', function ($user) {
+         *         // Record the user presence event
+         *     });
+         *
+         */
+        Event::fire('rainlab.user.seen', [$this]);
     }
 
     /**

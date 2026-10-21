@@ -3,9 +3,10 @@
 use Cms;
 use Auth;
 use Flash;
+use Request;
+use Redirect;
 use RainLab\User\Models\User;
-use RainLab\User\Models\UserLog;
-use RainLab\User\Models\UserPreference;
+use RainLab\User\Classes\ActionManager;
 use Cms\Classes\ComponentBase;
 use ApplicationException;
 use ValidationException;
@@ -23,10 +24,6 @@ use ForbiddenException;
 class Account extends ComponentBase
 {
     use \RainLab\User\Traits\ConfirmsPassword;
-    use \RainLab\User\Components\Account\ActionTwoFactor;
-    use \RainLab\User\Components\Account\ActionDeleteUser;
-    use \RainLab\User\Components\Account\ActionVerifyEmail;
-    use \RainLab\User\Components\Account\ActionBrowserSessions;
 
     /**
      * componentDetails
@@ -81,87 +78,16 @@ class Account extends ComponentBase
      */
     public function onUpdateProfile()
     {
-        $user = $this->user();
-        if (!$user) {
-            throw new ForbiddenException;
+        $response = $this->actions()->updateProfile((array) post(), [
+            'avatar' => files('avatar'),
+            'removeAvatar' => post('remove_avatar'),
+        ]);
+
+        if ($response) {
+            return $response;
         }
 
-        // Password update requires old password, use RainLab\User\Components\ResetPassword instead
-        $input = array_except((array) post(), ['password', 'remove_avatar']);
-
-        /**
-         * @event rainlab.user.beforeUpdate
-         * Provides custom logic for updating a user profile.
-         *
-         * Example usage:
-         *
-         *     Event::listen('rainlab.user.beforeUpdate', function ($component, $user, &$input) {
-         *         $input['some_field'] = post('to_save');
-         *     });
-         *
-         * Or
-         *
-         *     $component->bindEvent('user.beforeUpdate', function ($user, &$input) {
-         *         $input['some_field'] = post('to_save');
-         *     });
-         *
-         */
-        $this->fireSystemEvent('rainlab.user.beforeUpdate', [$user, &$input]);
-
-        // Avatar upload
-        if ($avatarFile = files('avatar')) {
-            $user->avatar = $avatarFile;
-        }
-        elseif (post('remove_avatar')) {
-            $user->avatar = null;
-        }
-
-        // Preference upload
-        if (($preferences = post('Preference')) && is_array($preferences)) {
-            UserPreference::setPreferencesSafe($user->id, $preferences);
-        }
-
-        // Email changed
-        if (isset($input['email']) && $user->email !== trim($input['email'])) {
-            $user->forceFill(['activated_at' => null]);
-
-            UserLog::createRecord($user->getKey(), UserLog::TYPE_SET_EMAIL, [
-                'user_full_name' => $user->full_name,
-                'old_value' => $user->email,
-                'new_value' => $input['email']
-            ]);
-        }
-
-        // Handle country selection
-        if (isset($input['country_id'])) {
-            $input['country_id'] = (int) $input['country_id'];
-        }
-
-        $user->fill($input);
-        $user->save();
-
-        /**
-         * @event rainlab.user.update
-         * Provides custom logic when a login attempt has been rate limited.
-         *
-         * Example usage:
-         *
-         *     Event::listen('rainlab.user.update', function ($component, $user, $input) {
-         *         // ...
-         *     });
-         *
-         * Or
-         *
-         *     $component->bindEvent('user.update', function ($user, $input) {
-         *         // ...
-         *     });
-         *
-         */
-        if ($event = $this->fireSystemEvent('rainlab.user.update', [$user, $input])) {
-            return $event;
-        }
-
-        if ($flash = Cms::flashFromPost(__("Profilen din er oppdatert"))) {
+        if ($flash = Cms::flashFromPost(__("Your profile has been updated."))) {
             Flash::success($flash);
         }
 
@@ -175,9 +101,9 @@ class Account extends ComponentBase
      */
     public function onVerifyEmail()
     {
-        $this->actionVerifyEmail();
+        $this->actions()->sendVerifyEmail();
 
-        if ($flash = Cms::flashFromPost(__("Sjekk e-posten din for ytterligere instruksjoner."))) {
+        if ($flash = Cms::flashFromPost(__("Please check your email for instructions."))) {
             Flash::success($flash);
         }
 
@@ -190,7 +116,7 @@ class Account extends ComponentBase
     protected function onConfirmEmail()
     {
         try {
-            $this->actionConfirmEmail(post('verify'));
+            $this->actions()->confirmVerifiedEmail(post('verify'));
         }
         catch (ApplicationException $ex) {
             throw new ValidationException([
@@ -210,7 +136,7 @@ class Account extends ComponentBase
             return $result;
         }
 
-        $this->actionEnableTwoFactor();
+        $this->actions()->enableTwoFactor();
 
         $this->page['showConfirmation'] = true;
     }
@@ -220,7 +146,7 @@ class Account extends ComponentBase
      */
     public function onConfirmTwoFactor()
     {
-        $this->actionConfirmTwoFactor();
+        $this->actions()->confirmTwoFactor(post());
 
         $this->page['showRecoveryCodes'] = true;
     }
@@ -242,7 +168,7 @@ class Account extends ComponentBase
      */
     public function onRegenerateTwoFactorRecoveryCodes()
     {
-        $this->actionRegenerateTwoFactorRecoveryCodes();
+        $this->actions()->regenerateTwoFactorRecoveryCodes();
 
         $this->page['showRecoveryCodes'] = true;
     }
@@ -256,7 +182,7 @@ class Account extends ComponentBase
             return $result;
         }
 
-        $this->actionDisableTwoFactor();
+        $this->actions()->disableTwoFactor();
     }
 
     /**
@@ -264,9 +190,9 @@ class Account extends ComponentBase
      */
     protected function onDeleteOtherSessions()
     {
-        $this->actionDeleteOtherSessions();
+        $this->actions()->deleteOtherSessions(post());
 
-        if ($flash = Cms::flashFromPost(__("Alle andre nettleser-sesjoner er logget ut."))) {
+        if ($flash = Cms::flashFromPost(__("Your other browser sessions have been logged out."))) {
             Flash::success($flash);
         }
 
@@ -280,15 +206,45 @@ class Account extends ComponentBase
      */
     protected function onDeleteUser()
     {
-        $this->actionDeleteUser();
+        $this->actions()->deleteUser(post());
 
-        if ($flash = Cms::flashFromPost(__("Kontoen din er fjernet fra vårt system."))) {
+        if ($flash = Cms::flashFromPost(__("Your account has been removed from our system."))) {
             Flash::success($flash);
         }
 
         if ($redirect = Cms::redirectFromPost()) {
             return $redirect;
         }
+    }
+
+    /**
+     * checkVerifyEmailRedirect verifies the email address using a code found in
+     * the page URL, then redirects to remove the code
+     */
+    protected function checkVerifyEmailRedirect()
+    {
+        $verifyCode = get('verify');
+        if (!$verifyCode) {
+            return;
+        }
+
+        try {
+            $this->actions()->confirmVerifiedEmail($verifyCode);
+
+            if ($flash = Cms::flashFromPost(__("Thank you for verifying your email."))) {
+                Flash::success($flash);
+            }
+        }
+        catch (ApplicationException $ex) {
+            Flash::error($ex->getMessage());
+        }
+
+        if (in_array(get('redirect'), ['0', 'false'])) {
+            return;
+        }
+
+        $redirectUrl = rtrim(Request::fullUrlWithQuery(['verify' => null]), '?');
+        return Redirect::to($redirectUrl);
     }
 
     /**
@@ -304,7 +260,7 @@ class Account extends ComponentBase
      */
     public function sessions(): array
     {
-        return $this->fetchSessions();
+        return $this->actions()->getBrowserSessions();
     }
 
     /**
@@ -312,7 +268,7 @@ class Account extends ComponentBase
      */
     public function twoFactorEnabled(): bool
     {
-        return $this->fetchTwoFactorEnabled();
+        return $this->actions()->hasTwoFactorEnabled();
     }
 
     /**
@@ -320,7 +276,15 @@ class Account extends ComponentBase
      */
     public function twoFactorRecoveryCodes(): array
     {
-        return $this->fetchTwoFactorRecoveryCodes();
+        return $this->actions()->getTwoFactorRecoveryCodes();
+    }
+
+    /**
+     * actions returns user workflow services hosted by this component
+     */
+    protected function actions(): ActionManager
+    {
+        return ActionManager::instance()->withContext($this);
     }
 
     /**

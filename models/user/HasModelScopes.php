@@ -49,6 +49,14 @@ trait HasModelScopes
     }
 
     /**
+     * scopePendingApproval returns users awaiting administrator approval.
+     */
+    public function scopePendingApproval($query)
+    {
+        return $query->where('is_approved', false);
+    }
+
+    /**
      * scopeApplyPrimaryGroup
      */
     public function scopeApplyPrimaryGroup($query, $filter)
@@ -65,6 +73,8 @@ trait HasModelScopes
      */
     public function scopeApplyGroups($query, $filter)
     {
+        $filter = (array) $filter;
+
         return $query->whereHas('groups', function($group) use ($filter) {
             $group->whereIn('id', $filter);
         });

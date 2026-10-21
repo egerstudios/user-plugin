@@ -1,14 +1,9 @@
 <?php namespace RainLab\User\Components;
 
 use Cms;
-use Auth;
-use Event;
-use Validator;
-use Lang;
 use RainLab\User\Models\User;
 use RainLab\User\Models\Setting;
-use RainLab\User\Models\UserLog;
-use RainLab\User\Helpers\User as UserHelper;
+use RainLab\User\Classes\ActionManager;
 use Cms\Classes\ComponentBase;
 use NotFoundException;
 
@@ -24,8 +19,32 @@ class Registration extends ComponentBase
     {
         return [
             'name' => "Registration",
-            'description' => "Provides services for registering a user."
+            'description' => "Provides services for registering a user.",
+            'ajaxPartial' => true
         ];
+    }
+
+    /**
+     * defineProperties
+     */
+    public function defineProperties()
+    {
+        return [
+            'redirect' => [
+                'title' => "Redirect To",
+                'description' => "Page name to redirect to after registration, unless overridden by the form.",
+                'type' => 'dropdown',
+                'default' => ''
+            ],
+        ];
+    }
+
+    /**
+     * getRedirectOptions
+     */
+    public function getRedirectOptions()
+    {
+        return [''=>'- none -'] + \Cms\Classes\Page::sortBy('baseFileName')->lists('baseFileName', 'baseFileName');
     }
 
     /**
@@ -37,103 +56,37 @@ class Registration extends ComponentBase
             throw new NotFoundException;
         }
 
-        $input = post();
-
-        /**
-         * @event rainlab.user.beforeRegister
-         * Provides custom logic for creating a new user during registration.
-         *
-         * Example usage:
-         *
-         *     Event::listen('rainlab.user.beforeRegister', function ($component, &$input) {
-         *         return User::create(...);
-         *     });
-         *
-         * Or
-         *
-         *     $component->bindEvent('user.beforeRegister', function (&$input) {
-         *         return User::create(...);
-         *     });
-         *
-         */
-        if ($event = $this->fireSystemEvent('rainlab.user.beforeRegister', [&$input])) {
-            $user = $event;
-        }
-        else {
-            $user = $this->createNewUser($input);
+        $result = $this->actions()->registerUser(post());
+        if (!$result instanceof User) {
+            return $result;
         }
 
-        Auth::login($user);
+        $user = $result;
 
-        /**
-         * @event rainlab.user.register
-         * Modify the return response after registration.
-         *
-         * Example usage:
-         *
-         *     Event::listen('rainlab.user.register', function ($component, $user) {
-         *         // Fire logic
-         *     });
-         *
-         * Or
-         *
-         *     $component->bindEvent('user.register', function ($user) {
-         *         // Fire logic
-         *     });
-         *
-         */
-        if ($event = $this->fireSystemEvent('rainlab.user.register', [$user])) {
-            return $event;
+        // Sign in deferred by an activation policy, inform the markup why
+        if (!$this->actions()->canSignInAfterRegister($user)) {
+            $this->page['awaitingActivation'] = Setting::get('require_activation', false) && !$user->hasVerifiedEmail();
+            $this->page['awaitingApproval'] = Setting::get('require_approval', false) && $user->isPendingApproval();
+            return;
         }
 
-        // Redirect to the intended page after successful registration
-        if ($redirect = Cms::redirectIntendedFromPost()) {
+        // Redirect to the intended page after successful registration,
+        // falling back to the component's redirect property
+        if ($redirect = Cms::redirectIntendedFromPost($this->makeRedirectUrl())) {
             return $redirect;
         }
     }
 
     /**
-     * createNewUser implements the logic for creating a new user
+     * makeRedirectUrl resolves the redirect property to a URL, or null when unset
      */
-    protected function createNewUser(array $input): User
+    protected function makeRedirectUrl(): ?string
     {
-        // If the password confirmation field is absent from the request payload,
-        // skip it here for a smoother registration process. Every second counts!
-        if (!array_key_exists('password_confirmation', $input)) {
-            $input['password_confirmation'] = $input['password'] ?? '';
+        if (!$page = $this->property('redirect')) {
+            return null;
         }
 
-        $messages = [
-            'required' => 'Feltet :attribute må fylles ut',
-            'string' => 'Feltet :attribute har ugyldige tegn',
-            'max' => 'Feltet :attribute kan ikke inneholde mer enn :max tegn',
-            'unique' => 'Det ser ut som :attribute finnes fra før',
-            'email' => 'Feltet for e-post inneholder ikke en gyldig e-post adresse'
-        ];
-
-
-        Validator::make($input, [
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => UserHelper::passwordRules(),
-            'mobile' => ['required', 'string', 'max:11']
-        ], Lang::get('rainlab.user::validation'))->validate();
-
-        $user = User::create([
-            'first_name' => $input['first_name'],
-            'last_name' => $input['last_name'] ?? null,
-            'email' => $input['email'],
-            'password' => $input['password'],
-            'password_confirmation' => $input['password_confirmation'],
-            'mobile' => $input['mobile'],
-        ]);
-
-        UserLog::createRecord($user->getKey(), UserLog::TYPE_NEW_USER, [
-            'user_full_name' => $user->full_name,
-        ]);
-
-        return $user;
+        return Cms::pageUrl($page);
     }
 
     /**
@@ -142,5 +95,13 @@ class Registration extends ComponentBase
     public function canRegister(): bool
     {
         return Setting::get('allow_registration');
+    }
+
+    /**
+     * actions returns user workflow services hosted by this component
+     */
+    protected function actions(): ActionManager
+    {
+        return ActionManager::instance()->withContext($this);
     }
 }

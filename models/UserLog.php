@@ -1,5 +1,6 @@
 <?php namespace RainLab\User\Models;
 
+use Event;
 use Request;
 use October\Rain\Database\ExpandoModel;
 
@@ -33,6 +34,16 @@ class UserLog extends ExpandoModel
     const TYPE_SELF_VERIFY = 'self-verify';
     const TYPE_SELF_LOGIN = 'self-login';
     const TYPE_SELF_DELETE = 'self-delete';
+    const TYPE_SELF_PASSWORD_RESET = 'self-password-reset';
+    const TYPE_SELF_PASSWORD_CHANGE = 'self-password-change';
+    const TYPE_ADMIN_IMPERSONATE = 'admin-impersonate';
+    const TYPE_ADMIN_BAN = 'admin-ban';
+    const TYPE_ADMIN_UNBAN = 'admin-unban';
+    const TYPE_ADMIN_DELETE = 'admin-delete';
+    const TYPE_ADMIN_RESTORE = 'admin-restore';
+    const TYPE_ADMIN_CONVERT_GUEST = 'admin-convert-guest';
+    const TYPE_ADMIN_MERGE = 'admin-merge';
+    const TYPE_ADMIN_APPROVE = 'admin-approve';
     const TYPE_INTERNAL_COMMENT = 'internal-comment';
 
     /**
@@ -70,6 +81,41 @@ class UserLog extends ExpandoModel
             'scope' => 'withTrashed'
         ]
     ];
+
+    /**
+     * filterTypeOptions returns available type options for the list filter
+     */
+    public function filterTypeOptions()
+    {
+        $options = [
+            self::TYPE_NEW_USER => __("New User"),
+            self::TYPE_SELF_LOGIN => __("Login"),
+            self::TYPE_SET_EMAIL => __("Email Changed"),
+            self::TYPE_SET_PASSWORD => __("Password Changed"),
+            self::TYPE_SELF_PASSWORD_CHANGE => __("Password Changed (Self)"),
+            self::TYPE_SELF_PASSWORD_RESET => __("Password Reset"),
+            self::TYPE_SET_TWO_FACTOR => __("Two-Factor Changed"),
+            self::TYPE_SELF_VERIFY => __("Email Verified"),
+            self::TYPE_SELF_DELETE => __("Account Deleted"),
+            self::TYPE_ADMIN_IMPERSONATE => __("Impersonation"),
+            self::TYPE_ADMIN_BAN => __("Banned"),
+            self::TYPE_ADMIN_UNBAN => __("Unbanned"),
+            self::TYPE_ADMIN_DELETE => __("Deleted by Admin"),
+            self::TYPE_ADMIN_RESTORE => __("Restored by Admin"),
+            self::TYPE_ADMIN_CONVERT_GUEST => __("Guest Converted"),
+            self::TYPE_ADMIN_MERGE => __("User Merged"),
+            self::TYPE_ADMIN_APPROVE => __("Approved by Admin"),
+        ];
+
+        $extended = Event::fire('rainlab.user.extendLogTypeOptions', [$this]);
+        foreach ((array) $extended as $extra) {
+            if (is_array($extra)) {
+                $options += $extra;
+            }
+        }
+
+        return $options;
+    }
 
     /**
      * createRecord adds a log for a user

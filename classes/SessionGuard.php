@@ -2,6 +2,7 @@
 
 use Hash;
 use RainLab\User\Models\User;
+use RainLab\User\Models\Setting;
 use Illuminate\Auth\SessionGuard as SessionGuardBase;
 use Illuminate\Contracts\Auth\Authenticatable;
 use InvalidArgumentException;
@@ -21,9 +22,7 @@ class SessionGuard extends SessionGuardBase
     use \RainLab\User\Classes\SessionGuard\HasLegacyApi;
 
     /**
-     * rehashUserPassword for the current user, overrides parent logic
-     * to remove the second hash since it is covered by Hashable during
-     * the Auth::logoutOtherDevices method call
+     * rehashUserPassword passes the plain password to the model for Auth::logoutOtherDevices on Laravel 10, see UserProvider for later versions.
      *
      * @param  string  $password
      * @param  string  $attribute
@@ -54,6 +53,14 @@ class SessionGuard extends SessionGuardBase
     {
         if ($user->is_banned) {
             throw new ValidationException(['password' => __("Your account is locked. Please contact the site administrator.")]);
+        }
+
+        if (Setting::get('require_activation', false) && !$user->hasVerifiedEmail()) {
+            throw new ValidationException(['password' => __("You must confirm your email address before signing in.")]);
+        }
+
+        if (Setting::get('require_approval', false) && $user->isPendingApproval()) {
+            throw new ValidationException(['password' => __("Your account is awaiting approval from an administrator.")]);
         }
 
         $this->preventConcurrentSessions($user);

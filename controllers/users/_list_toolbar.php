@@ -1,3 +1,4 @@
+<?php $requireApproval = \RainLab\User\Models\Setting::get('require_approval'); ?>
 <div data-control="toolbar">
     <?= Ui::button("New User", 'user/users/create')
         ->icon('icon-plus')
@@ -9,6 +10,64 @@
         ->icon('icon-delete')
         ->secondary()
         ->confirmMessage("Are you sure?") ?>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="dropdown dropdown-fixed">
+        <?= Ui::button("Manage")
+            ->attributes(['data-toggle' => 'dropdown'])
+            ->listCheckedTrigger()
+            ->icon('icon-angle-down')
+            ->secondary() ?>
+        <ul class="dropdown-menu">
+            <?php if ($requireApproval): ?>
+                <li>
+                    <?= Ui::ajaxButton("Approve", 'onApproveSelected')
+                        ->replaceCssClass('dropdown-item')
+                        ->listCheckedRequest()
+                        ->icon('icon-check')
+                        ->confirmMessage("Are you sure?") ?>
+                </li>
+                <li role="separator" class="dropdown-divider"></li>
+            <?php endif ?>
+            <li>
+                <?= Ui::ajaxButton("Activate", 'onActivateSelected')
+                    ->replaceCssClass('dropdown-item')
+                    ->listCheckedRequest()
+                    ->icon('icon-user-plus')
+                    ->confirmMessage("Are you sure?") ?>
+            </li>
+            <li>
+                <?= Ui::ajaxButton("Restore", 'onRestoreSelected')
+                    ->replaceCssClass('dropdown-item')
+                    ->listCheckedRequest()
+                    ->icon('icon-star')
+                    ->confirmMessage("Are you sure?") ?>
+            </li>
+            <li role="separator" class="dropdown-divider"></li>
+            <li>
+                <?= Ui::ajaxButton("Ban", 'onBanSelected')
+                    ->replaceCssClass('dropdown-item')
+                    ->listCheckedRequest()
+                    ->icon('icon-ban')
+                    ->confirmMessage("Are you sure?") ?>
+            </li>
+            <li>
+                <?= Ui::ajaxButton("Unban", 'onUnbanSelected')
+                    ->replaceCssClass('dropdown-item')
+                    ->listCheckedRequest()
+                    ->icon('icon-circle-o-notch')
+                    ->confirmMessage("Are you sure?") ?>
+            </li>
+            <li role="separator" class="dropdown-divider"></li>
+            <li>
+                <?= Ui::popupButton("Merge Users", 'onLoadMergeUsersForm')
+                    ->replaceCssClass('dropdown-item')
+                    ->listCheckedRequest()
+                    ->icon('icon-compress') ?>
+            </li>
+        </ul>
+    </div>
 
     <?=
         /**
@@ -31,59 +90,18 @@
         <?= Ui::button("More Actions")
             ->attributes(['data-toggle' => 'dropdown'])
             ->circleIcon('icon-ellipsis-v')
-            ->secondary()
-        ?>
+            ->secondary() ?>
         <ul class="dropdown-menu">
             <li>
-                <?= Ui::ajaxButton("Activate", 'onActivateSelected')
-                    ->replaceCssClass('dropdown-item')
-                    ->listCheckedTrigger()
-                    ->listCheckedRequest()
-                    ->icon('icon-user-plus')
-                    ->secondary()
-                    ->confirmMessage("Are you sure?") ?>
-            </li>
-            <li>
-                <?= Ui::ajaxButton("Restore", 'onRestoreSelected')
-                    ->replaceCssClass('dropdown-item')
-                    ->listCheckedTrigger()
-                    ->listCheckedRequest()
-                    ->icon('icon-star')
-                    ->secondary()
-                    ->confirmMessage("Are you sure?") ?>
-            </li>
-            <li role="separator" class="dropdown-divider"></li>
-            <li>
-                <?= Ui::ajaxButton("Ban", 'onBanSelected')
-                    ->replaceCssClass('dropdown-item')
-                    ->listCheckedTrigger()
-                    ->listCheckedRequest()
-                    ->icon('icon-ban')
-                    ->secondary()
-                    ->confirmMessage("Are you sure?") ?>
-            </li>
-            <li>
-                <?= Ui::ajaxButton("Unban", 'onUnbanSelected')
-                    ->replaceCssClass('dropdown-item')
-                    ->listCheckedTrigger()
-                    ->listCheckedRequest()
-                    ->icon('icon-circle-o-notch')
-                    ->secondary()
-                    ->confirmMessage("Are you sure?") ?>
-            </li>
-            <?php /*
-            <li role="separator" class="dropdown-divider"></li>
-            <li>
-                <?= Ui::button("Import", 'rainlab/user/users/import')
+                <?= Ui::button("Import", 'user/users/import')
                     ->replaceCssClass('dropdown-item')
                     ->icon('icon-upload') ?>
             </li>
             <li>
-                <?= Ui::button("Export", 'rainlab/user/users/export')
+                <?= Ui::button("Export", 'user/users/export')
                     ->replaceCssClass('dropdown-item')
                     ->icon('icon-download') ?>
             </li>
-            */ ?>
         </ul>
     </div>
 </div>

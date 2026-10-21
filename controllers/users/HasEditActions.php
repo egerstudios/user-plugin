@@ -7,6 +7,7 @@ use Lang;
 use Flash;
 use Response;
 use RainLab\User\Models\UserGroup;
+use RainLab\User\Models\UserLog;
 
 /**
  * HasEditActions
@@ -38,6 +39,8 @@ trait HasEditActions
 
         $model->ban();
 
+        UserLog::createSystemRecord($model->getKey(), UserLog::TYPE_ADMIN_BAN);
+
         Flash::success(__("User has been banned"));
 
         if ($redirect = $this->makeRedirect('update-close', $model)) {
@@ -54,7 +57,27 @@ trait HasEditActions
 
         $model->unban();
 
+        UserLog::createSystemRecord($model->getKey(), UserLog::TYPE_ADMIN_UNBAN);
+
         Flash::success(__("User has been unbanned"));
+
+        if ($redirect = $this->makeRedirect('update-close', $model)) {
+            return $redirect;
+        }
+    }
+
+    /**
+     * preview_onApproveUser manually approves a user awaiting activation
+     */
+    public function preview_onApproveUser($recordId = null)
+    {
+        $model = $this->formFindModelObject($recordId);
+
+        $model->approve();
+
+        UserLog::createSystemRecord($model->getKey(), UserLog::TYPE_ADMIN_APPROVE);
+
+        Flash::success(__("User has been approved"));
 
         if ($redirect = $this->makeRedirect('update-close', $model)) {
             return $redirect;
@@ -87,6 +110,8 @@ trait HasEditActions
             $model->save();
         }
 
+        UserLog::createSystemRecord($model->getKey(), UserLog::TYPE_ADMIN_CONVERT_GUEST);
+
         Flash::success(__("User has been converted to a registered account"));
 
         if ($redirect = $this->makeRedirect('update-close', $model)) {
@@ -106,6 +131,8 @@ trait HasEditActions
         $model = $this->formFindModelObject($recordId);
 
         Auth::impersonate($model);
+
+        UserLog::createSystemRecord($model->getKey(), UserLog::TYPE_ADMIN_IMPERSONATE);
 
         Flash::success(__("You are now impersonating this user"));
 
@@ -128,6 +155,8 @@ trait HasEditActions
 
         $model->restore();
 
+        UserLog::createSystemRecord($model->getKey(), UserLog::TYPE_ADMIN_RESTORE);
+
         Flash::success(__("Restored the selected users"));
 
         if ($redirect = $this->makeRedirect('delete', $model)) {
@@ -149,6 +178,8 @@ trait HasEditActions
     public function preview_onDelete($recordId = null)
     {
         $model = $this->formFindModelObject($recordId);
+
+        UserLog::createSystemRecord($model->getKey(), UserLog::TYPE_ADMIN_DELETE);
 
         $model->smartDelete();
 

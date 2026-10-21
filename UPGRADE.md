@@ -82,7 +82,7 @@ Component | Purpose
 
 ### Session Component
 
-The `allowedUserGroups` property has been removed from the `Session` component. This can be supplemented by some Twig code:
+The `allowedUserGroups` property has been renamed to `allowUserGroups` on the `Session` component, the original name is still checked as a fallback. The same check is also available as Twig code:
 
 ```twig
 {% if not user.inGroup('premium-users') %}
@@ -90,24 +90,19 @@ The `allowedUserGroups` property has been removed from the `Session` component. 
 {% endif %}
 ```
 
-### Require Activation is Removed
+### Require Activation
 
-The "Require Activation" functionality has been removed from the settings page for simplicity. The replacement approach below is more flexible, since custom pages or banners can be used based on the requirements.
+The "Require Activation" functionality returns as two options under User Settings on the Sign In tab, enforced at sign in:
 
-A user can be checked if they are verified using Twig:
+- **Require Activation** requires users to confirm their email address before they can sign in.
+- **Require Admin Approval** requires an administrator to approve new users before they can sign in.
+
+Both are disabled by default and can be combined. See the [Registration component](./docs/component-registration.md) article.
+
+Access can also be gated in Twig, which is more flexible since custom pages or banners can be used based on the requirements:
 
 ```twig
 {% if not user.hasVerifiedEmail %}
-    {% do redirect('account/login') %}
-{% endif %}
-```
-
-Checking administrator approval is possible by creating an "Approved User" user group and placing approved users in that group.
-
-Alternatively, by extending the users database table with a `is_approved` field. Then check in Twig:
-
-```twig
-{% if not user.is_approved %}
     {% do redirect('account/login') %}
 {% endif %}
 ```

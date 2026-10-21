@@ -1,6 +1,7 @@
 <?php namespace RainLab\User;
 
 use App;
+use Lang;
 use Event;
 use Config;
 use Backend;
@@ -46,6 +47,10 @@ class Plugin extends PluginBase
      */
     public function boot()
     {
+        // Register JSON translations on the frontend
+        if (!App::runningInBackend()) {
+            Lang::addJsonPath(plugins_path('rainlab/user/lang'));
+        }
     }
 
     /**
@@ -63,6 +68,7 @@ class Plugin extends PluginBase
      */
     protected function registerSingletons()
     {
+        $this->app->singleton('user.actions', \RainLab\User\Classes\ActionManager::class);
         $this->app->singleton('user.twofactor', \RainLab\User\Classes\TwoFactorManager::class);
 
         // Laravel services

@@ -1,11 +1,12 @@
-<?php namespace RainLab\User\Components\ResetPassword;
+<?php namespace RainLab\User\Classes\ActionManager;
 
 use Auth;
 use Request;
 use Validator;
-use ForbiddenException;
 use RainLab\User\Models\User;
+use RainLab\User\Models\UserLog;
 use RainLab\User\Helpers\User as UserHelper;
+use ForbiddenException;
 
 /**
  * ActionChangePassword
@@ -16,21 +17,22 @@ use RainLab\User\Helpers\User as UserHelper;
 trait ActionChangePassword
 {
     /**
-     * actionChangePassword
+     * changePassword updates the password of the authenticated user, requiring
+     * the current password for confirmation
      */
-    protected function actionChangePassword()
+    public function changePassword(array $input): void
     {
-        $user = Auth::user();
+        $user = $this->user();
         if (!$user) {
             throw new ForbiddenException;
         }
 
-        $this->updateUserPassword($user, post());
+        $this->updateUserPassword($user, $input);
+
+        UserLog::createRecord($user->getKey(), UserLog::TYPE_SELF_PASSWORD_CHANGE);
 
         if (Request::hasSession()) {
-            Request::session()->put([
-                'password_hash_'.Auth::getDefaultDriver() => $user->getAuthPassword(),
-            ]);
+            Auth::updatePasswordHashSession($user);
         }
     }
 
